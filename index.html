@@ -1,0 +1,1250 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ServiceTrack</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%233b7ff5'/><text x='50%' y='54%' dominant-baseline='middle' text-anchor='middle' font-family='Arial Black,sans-serif' font-weight='900' font-size='14' fill='white'>ST</text></svg>">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root{
+  --bg:#f5f6fa;--surface:#fff;--surface2:#f0f2f7;--surface3:#e8eaf2;
+  --border:#e2e5ef;--border2:#d0d4e4;
+  --text:#1a1d2e;--text2:#5a6080;--text3:#9ba3bf;
+  --blue:#3b7ff5;--blue-light:#eef3fe;--blue-mid:#c8d9fc;
+  --green:#22c77a;--green-light:#e8faf2;
+  --amber:#f59e0b;--amber-light:#fef3c7;
+  --red:#ef4444;--red-light:#fee2e2;
+  --pink:#ec4899;--pink-light:#fce7f3;
+  --purple:#8b5cf6;--purple-light:#ede9fe;
+  --radius:8px;--radius-lg:12px;--radius-xl:16px;
+  --shadow:0 1px 3px rgba(0,0,0,0.06),0 1px 2px rgba(0,0,0,0.04);
+  --shadow-md:0 4px 12px rgba(0,0,0,0.08),0 2px 4px rgba(0,0,0,0.04);
+  --shadow-lg:0 8px 32px rgba(0,0,0,0.12),0 2px 8px rgba(0,0,0,0.06);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Inter',sans-serif;font-size:14px;color:var(--text);background:var(--bg);min-height:100vh;-webkit-font-smoothing:antialiased}
+::-webkit-scrollbar{width:5px;height:5px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
+input,select,textarea{background:var(--surface);color:var(--text);border:1.5px solid var(--border);border-radius:var(--radius);padding:9px 13px;font-size:13px;font-family:'Inter',sans-serif;width:100%;outline:none;transition:border-color .15s,box-shadow .15s}
+input:focus,select:focus,textarea:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(59,127,245,0.1)}
+input::placeholder,textarea::placeholder{color:var(--text3)}
+select option{background:var(--surface)}
+textarea{resize:vertical;min-height:72px}
+button{cursor:pointer;border:1.5px solid var(--border);background:var(--surface);color:var(--text2);border-radius:var(--radius);padding:8px 16px;font-size:13px;font-weight:500;font-family:'Inter',sans-serif;transition:all .15s}
+button:hover{background:var(--surface2);color:var(--text);border-color:var(--border2)}
+button:active{transform:scale(0.98)}
+button.primary{background:var(--blue);color:#fff;border-color:var(--blue)}
+button.primary:hover{background:#2b6ee0;border-color:#2b6ee0}
+button.success{background:var(--green);color:#fff;border-color:var(--green)}
+button.success:hover{background:#1aad68}
+button.danger{background:var(--red-light);color:var(--red);border-color:#fca5a5}
+button.danger:hover{background:#fecaca}
+button.small{padding:5px 11px;font-size:12px}
+button:disabled{opacity:0.5;cursor:not-allowed;transform:none}
+.badge{display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;letter-spacing:0.02em}
+.badge::before{content:'';width:5px;height:5px;border-radius:50%;flex-shrink:0}
+.badge.processing{background:var(--blue-light);color:#1d4ed8}.badge.processing::before{background:#3b82f6}
+.badge.pending{background:var(--amber-light);color:#b45309}.badge.pending::before{background:var(--amber)}
+.badge.waiting{background:var(--pink-light);color:#be185d}.badge.waiting::before{background:var(--pink)}
+.badge.complete{background:var(--green-light);color:#15803d}.badge.complete::before{background:var(--green)}
+.days-tag{font-size:11px;font-weight:600;padding:3px 9px;border-radius:6px;background:var(--surface2);color:var(--text3)}
+.days-tag.urgent{background:var(--red-light);color:var(--red)}
+.days-tag.done{background:var(--green-light);color:#15803d}
+/* LAYOUT */
+.app-layout{display:flex;min-height:100vh}
+.sidebar{width:225px;flex-shrink:0;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;position:sticky;top:0;height:100vh;overflow-y:auto}
+.sidebar-logo{padding:20px 18px 16px;font-family:'Plus Jakarta Sans',sans-serif;font-weight:800;font-size:17px;color:var(--text);letter-spacing:-0.5px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:9px}
+.logo-icon{width:30px;height:30px;background:var(--blue);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:13px;color:#fff;font-weight:700;flex-shrink:0}
+.sidebar-section{padding:14px 12px 6px;font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:0.1em}
+.nav-item{display:flex;align-items:center;gap:10px;padding:8px 12px;border-radius:var(--radius);margin:1px 8px;cursor:pointer;transition:all .15s;font-size:13px;font-weight:500;color:var(--text2);border:none;background:transparent;width:calc(100% - 16px);text-align:left}
+.nav-item:hover{background:var(--surface2);color:var(--text)}
+.nav-item.active{background:var(--blue-light);color:var(--blue);font-weight:600}
+.nav-icon{width:17px;height:17px;flex-shrink:0;opacity:0.7}
+.nav-item.active .nav-icon{opacity:1}
+.sidebar-footer{margin-top:auto;padding:14px;border-top:1px solid var(--border)}
+.user-pill{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:var(--radius);background:var(--surface2)}
+.avatar{width:32px;height:32px;border-radius:50%;background:var(--blue-light);display:flex;align-items:center;justify-content:center;font-family:'Plus Jakarta Sans',sans-serif;font-size:11px;font-weight:700;color:var(--blue);flex-shrink:0}
+.avatar.green{background:var(--green-light);color:#15803d}
+.avatar.purple{background:var(--purple-light);color:var(--purple)}
+.user-name{font-size:12px;font-weight:600;color:var(--text)}
+.user-role{font-size:10px;color:var(--text3);margin-top:1px}
+.main{flex:1;overflow:auto;min-width:0}
+.topbar{background:var(--surface);border-bottom:1px solid var(--border);padding:0 26px;height:56px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:50}
+.page-title{font-family:'Plus Jakarta Sans',sans-serif;font-size:16px;font-weight:700;color:var(--text)}
+.sync-dot{width:7px;height:7px;border-radius:50%;background:var(--green);display:inline-block;margin-right:5px;animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}
+.sync-dot.offline{background:var(--red);animation:none}
+.sync-dot.loading{background:var(--amber);animation:pulse .8s infinite}
+.page{padding:24px;max-width:1100px}
+/* CARDS */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:20px 22px;box-shadow:var(--shadow)}
+.mt{margin-top:16px}
+.card-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+.card-title{font-family:'Plus Jakarta Sans',sans-serif;font-size:14px;font-weight:700;color:var(--text)}
+.card-subtitle{font-size:12px;color:var(--text3);margin-top:2px}
+/* METRICS */
+.metrics-row{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:18px}
+.metric-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:16px 18px;box-shadow:var(--shadow);position:relative;overflow:hidden;transition:box-shadow .2s,transform .2s;cursor:pointer}
+.metric-card:hover{box-shadow:var(--shadow-md);transform:translateY(-1px)}
+.m-icon{width:36px;height:36px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:17px;margin-bottom:10px}
+.m-label{font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:0.07em;margin-bottom:3px}
+.m-value{font-family:'Plus Jakarta Sans',sans-serif;font-size:26px;font-weight:800;line-height:1;color:var(--text)}
+.m-sub{font-size:11px;color:var(--text3);margin-top:3px}
+/* TABLES */
+table{width:100%;border-collapse:collapse;table-layout:fixed}
+th{font-size:11px;font-weight:600;color:var(--text3);text-align:left;padding:0 12px 9px;border-bottom:1.5px solid var(--border);text-transform:uppercase;letter-spacing:0.06em}
+td{padding:10px 12px;border-bottom:1px solid var(--border);font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text2)}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:#fafbff}
+td.pc{color:var(--text);font-weight:500}
+/* FORMS */
+.form-grid-2{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px}
+.form-grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:12px}
+.form-grid-1{display:grid;gap:12px;margin-bottom:12px}
+.form-field label{display:block;font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:0.07em;margin-bottom:5px}
+.form-actions{display:flex;align-items:center;gap:10px;margin-top:4px}
+.err{font-size:12px;color:var(--red);min-height:16px}
+.ok{font-size:12px;color:var(--green);min-height:16px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px}
+.sel-inline{background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:var(--radius);padding:4px 8px;font-size:12px;font-family:'Inter',sans-serif;width:auto;cursor:pointer}
+.sel-inline:focus{border-color:var(--blue);box-shadow:none}
+/* LOGIN */
+.login-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;background:linear-gradient(135deg,#f0f4ff 0%,#f5f6fa 50%,#f0f7ff 100%)}
+.login-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-xl);padding:40px;width:100%;max-width:420px;box-shadow:var(--shadow-md)}
+.login-logo{font-family:'Plus Jakarta Sans',sans-serif;font-weight:800;font-size:24px;color:var(--text);letter-spacing:-0.5px;margin-bottom:6px;display:flex;align-items:center;gap:12px}
+.login-logo .logo-icon{width:34px;height:34px;font-size:16px}
+.login-sub{font-size:13px;color:var(--text3);margin-bottom:28px}
+.role-tabs{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:22px}
+.role-tab{padding:8px;border-radius:var(--radius);font-size:12px;font-weight:600;text-align:center;cursor:pointer;border:1.5px solid var(--border);background:var(--surface2);color:var(--text3);transition:all .15s}
+.role-tab.active{border-color:var(--blue);background:var(--blue-light);color:var(--blue)}
+/* MODAL */
+.modal-bg{position:fixed;inset:0;background:rgba(15,18,40,0.45);z-index:200;display:flex;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(2px)}
+.modal{background:var(--surface);border-radius:var(--radius-xl);padding:28px;width:100%;max-width:680px;max-height:90vh;overflow-y:auto;box-shadow:var(--shadow-lg);position:relative}
+.modal-lg{max-width:820px}
+.modal-title{font-family:'Plus Jakarta Sans',sans-serif;font-size:16px;font-weight:700;color:var(--text);margin-bottom:20px;display:flex;align-items:center;justify-content:space-between}
+.modal-close{background:none;border:none;font-size:20px;color:var(--text3);cursor:pointer;padding:0;line-height:1}
+.modal-close:hover{color:var(--text)}
+/* PHOTO UPLOAD */
+.photo-upload-area{border:2px dashed var(--border2);border-radius:var(--radius-lg);padding:20px;text-align:center;cursor:pointer;transition:all .15s;position:relative;overflow:hidden}
+.photo-upload-area:hover{border-color:var(--blue);background:var(--blue-light)}
+.photo-upload-area input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
+.photo-preview{width:100%;height:140px;object-fit:cover;border-radius:var(--radius);margin-top:10px;display:block}
+.photo-label{font-size:12px;font-weight:600;color:var(--text3);margin-bottom:6px}
+/* PRODUCTS TABLE */
+.products-table{width:100%;border-collapse:collapse;margin-top:8px}
+.products-table th{font-size:11px;color:var(--text3);text-align:left;padding:6px 8px;border-bottom:1px solid var(--border);font-weight:600;text-transform:uppercase;letter-spacing:0.05em}
+.products-table td{padding:6px 8px;border-bottom:1px solid var(--border)}
+.products-table tr:last-child td{border-bottom:none}
+.products-table input{padding:5px 8px;font-size:12px;border-radius:6px}
+/* SITE CARDS */
+.site-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:14px 16px;cursor:pointer;transition:all .2s;box-shadow:var(--shadow)}
+.site-card:hover{box-shadow:var(--shadow-md);border-color:var(--blue-mid);transform:translateY(-2px)}
+.site-name-h{font-family:'Plus Jakarta Sans',sans-serif;font-weight:700;font-size:13px;color:var(--text);margin-bottom:8px}
+.site-mini-bar{height:5px;border-radius:3px;background:var(--surface2);overflow:hidden;margin-bottom:6px}
+.site-mini-fill{height:100%;border-radius:3px;background:var(--blue);transition:width .4s}
+.site-stats{display:flex;gap:5px;flex-wrap:wrap}
+.site-stat{font-size:11px;padding:2px 7px;border-radius:10px;font-weight:600}
+/* REPORT */
+.report-stat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px}
+.rstat{background:var(--surface2);border-radius:var(--radius-lg);padding:14px;text-align:center}
+.rstat .rv{font-family:'Plus Jakarta Sans',sans-serif;font-size:24px;font-weight:800;color:var(--text)}
+.rstat .rl{font-size:11px;color:var(--text3);margin-top:2px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em}
+.progress-bar{background:var(--surface2);border-radius:4px;height:7px;overflow:hidden;margin-top:4px}
+.progress-fill{height:100%;border-radius:4px;background:var(--blue);transition:width .5s}
+.progress-fill.green{background:var(--green)}
+.chart-wrap{position:relative;height:200px}
+.chart-wrap-sm{position:relative;height:170px}
+/* FILTER BAR */
+.filter-bar{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px;align-items:flex-end}
+.filter-bar .form-field{margin:0;min-width:160px}
+.filter-bar .form-field label{margin-bottom:4px}
+/* BREADCRUMB */
+.breadcrumb{display:flex;align-items:center;gap:6px;margin-bottom:16px;font-size:13px;color:var(--text3)}
+.breadcrumb span{cursor:pointer;color:var(--blue);font-weight:500}
+.breadcrumb span:hover{text-decoration:underline}
+/* MISC */
+.empty{padding:28px 0;text-align:center;color:var(--text3);font-size:13px}
+.tscroll{overflow-x:auto}
+hr{border:none;border-top:1px solid var(--border);margin:16px 0}
+.loading-overlay{position:fixed;inset:0;background:rgba(255,255,255,0.88);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:999;gap:10px}
+.spinner{width:34px;height:34px;border:3px solid var(--border);border-top-color:var(--blue);border-radius:50%;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.toast{position:fixed;bottom:22px;right:22px;background:var(--text);color:#fff;padding:9px 16px;border-radius:var(--radius-lg);font-size:13px;font-weight:500;z-index:1000;opacity:0;transform:translateY(6px);transition:all .22s;pointer-events:none}
+.toast.show{opacity:1;transform:translateY(0)}
+.toast.error{background:var(--red)}
+.toast.success{background:var(--green)}
+@keyframes fadeUp{from{opacity:0;transform:translateY(7px)}to{opacity:1;transform:translateY(0)}}
+.page>*{animation:fadeUp .2s ease both}
+.page>*:nth-child(1){animation-delay:.00s}
+.page>*:nth-child(2){animation-delay:.04s}
+.page>*:nth-child(3){animation-delay:.08s}
+.page>*:nth-child(4){animation-delay:.12s}
+.page>*:nth-child(5){animation-delay:.16s}
+/* DETAIL VIEW */
+.detail-section{margin-bottom:18px}
+.detail-label{font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:0.07em;margin-bottom:6px}
+.detail-value{font-size:13px;color:var(--text);line-height:1.6}
+.photo-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:8px}
+.photo-thumb{width:100%;height:160px;object-fit:cover;border-radius:var(--radius-lg);border:1px solid var(--border);cursor:pointer}
+.photo-thumb:hover{opacity:0.9}
+/* TIME BADGE */
+.time-badge{background:var(--purple-light);color:var(--purple);padding:3px 9px;border-radius:6px;font-size:11px;font-weight:600}
+/* SETTINGS ITEMS */
+.settings-item{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--border)}
+.settings-item:last-of-type{border-bottom:none}
+.settings-item-name{flex:1;font-size:13px;color:var(--text2)}
+.settings-item-edit{display:none;flex:1}
+.settings-item.editing .settings-item-name{display:none}
+.settings-item.editing .settings-item-edit{display:block}
+.add-row{display:flex;gap:8px;margin-top:12px}
+/* CUSTOMER PORTAL */
+.customer-request-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:16px;margin-bottom:10px;box-shadow:var(--shadow);transition:box-shadow .2s}
+.customer-request-card:hover{box-shadow:var(--shadow-md)}
+/* PRINT STYLES */
+@media print{
+  .sidebar,.topbar,.no-print{display:none!important}
+  .main{overflow:visible}
+  .page{padding:0}
+  .card{box-shadow:none;border:1px solid #ccc;page-break-inside:avoid}
+  table{font-size:11px}
+  .metrics-row{grid-template-columns:repeat(3,1fr)}
+}
+</style>
+</head>
+<body>
+<div id="app"><div class="loading-overlay"><div class="spinner"></div><div style="font-size:13px;color:var(--text3)">Connecting…</div></div></div>
+<div class="toast" id="toast"></div>
+<div id="modalContainer"></div>
+
+<script>
+const SUPABASE_URL = 'https://gylsqdffbnprbrhbwpuh.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd5bHNxZGZmYm5wcmJyaGJ3cHVoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY3MDI0MDgsImV4cCI6MjA5MjI3ODQwOH0.aLWAQimd2DeS4O0fHHdWc2Zm1tDfjRJRCuTNbfOweSk';
+
+const {createClient} = supabase;
+const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+let currentUser = null;
+let adminTab = 'dashboard';
+let selectedSite = null;
+let charts = {};
+let DB = {staff:[],customers:[],services:[],sites:[],jobs:[]};
+let syncStatus = 'loading';
+
+/* ══ TOAST ══ */
+function showToast(msg,type=''){
+  const t=document.getElementById('toast');
+  t.textContent=msg;t.className='toast show'+(type?' '+type:'');
+  setTimeout(()=>t.className='toast',2800);
+}
+
+/* ══ HELPERS ══ */
+const initials=n=>n.split(' ').map(w=>w[0]).slice(0,2).join('').toUpperCase();
+const daysPending=j=>j.status==='Complete'?null:Math.floor((Date.now()-new Date(j.created_at))/86400000);
+const siteShort=s=>s.split('—')[0].trim();
+const pct=(a,b)=>b===0?0:Math.round(a/b*100);
+const statusCls={Processing:'processing',Pending:'pending','Waiting for Material':'waiting',Complete:'complete'};
+function badgeHtml(s){return`<span class="badge ${statusCls[s]||''}">${s}</span>`;}
+function dtagHtml(d){
+  if(d===null)return`<span class="days-tag done">Done</span>`;
+  return`<span class="days-tag ${d>5?'urgent':''}">${d}d</span>`;
+}
+function timeTaken(job){
+  if(job.status!=='Complete'||!job.completed_at)return null;
+  const ms=new Date(job.completed_at)-new Date(job.created_at);
+  const h=Math.floor(ms/3600000);
+  if(h<24)return h+'h';
+  return Math.floor(h/24)+'d '+( h%24)+'h';
+}
+function destroyCharts(){Object.values(charts).forEach(c=>{try{c.destroy()}catch(e){}});charts={};}
+function setSyncStatus(s){
+  syncStatus=s;
+  const dot=document.getElementById('syncDot');
+  if(dot)dot.className='sync-dot'+(s==='offline'?' offline':s==='loading'?' loading':'');
+}
+
+/* ══ DATA ══ */
+async function loadAll(){
+  try{
+    setSyncStatus('loading');
+    const [staffRes,custRes,jobsRes,svcRes,siteRes]=await Promise.all([
+      sb.from('staff').select('*').order('name'),
+      sb.from('customers').select('*').order('name'),
+      sb.from('jobs').select('*').order('created_at',{ascending:false}),
+      sb.from('services').select('*').order('name'),
+      sb.from('sites').select('*').order('name'),
+    ]);
+    if(staffRes.error)throw staffRes.error;
+    if(custRes.error)throw custRes.error;
+    if(jobsRes.error)throw jobsRes.error;
+    if(svcRes.error)throw svcRes.error;
+    if(siteRes.error)throw siteRes.error;
+    DB.staff=staffRes.data||[];
+    DB.customers=custRes.data||[];
+    DB.jobs=jobsRes.data||[];
+    DB.services=(svcRes.data||[]).map(r=>({id:r.id,name:r.name}));
+    DB.sites=(siteRes.data||[]).map(r=>({id:r.id,name:r.name}));
+    setSyncStatus('online');
+    return true;
+  }catch(e){
+    console.error('Load error:',e);
+    setSyncStatus('offline');
+    showToast('Connection error: '+JSON.stringify(e),'error');
+    return false;
+  }
+}
+
+function setupRealtime(){
+  sb.channel('st-realtime')
+    .on('postgres_changes',{event:'*',schema:'public',table:'jobs'},async()=>{
+      const{data}=await sb.from('jobs').select('*').order('created_at',{ascending:false});
+      if(data){DB.jobs=data;render();}
+    })
+    .on('postgres_changes',{event:'*',schema:'public',table:'staff'},async()=>{
+      const{data}=await sb.from('staff').select('*').order('name');
+      if(data){DB.staff=data;render();}
+    })
+    .on('postgres_changes',{event:'*',schema:'public',table:'customers'},async()=>{
+      const{data}=await sb.from('customers').select('*').order('name');
+      if(data){DB.customers=data;render();}
+    })
+    .subscribe(status=>setSyncStatus(status==='SUBSCRIBED'?'online':'loading'));
+}
+
+/* ══ AUTH ══ */
+async function doLogin(role){
+  const u=document.getElementById('lu').value.trim().toLowerCase();
+  const p=document.getElementById('lp').value.trim();
+  const errEl=document.getElementById('lerr');
+  errEl.textContent='';
+  if(!u||!p){errEl.textContent='Please enter username and password.';return;}
+  const btn=document.getElementById('loginBtn');
+  btn.disabled=true;btn.textContent='Signing in…';
+
+  let res;
+  if(role==='admin'||role==='staff'){
+    res=await sb.from('staff').select('*').eq('username',u).single();
+  } else {
+    res=await sb.from('customers').select('*').eq('username',u).single();
+  }
+
+  btn.disabled=false;btn.textContent='Sign in';
+  if(res.error||!res.data){errEl.textContent='Invalid username or password.';return;}
+  if(res.data.password_hash!==p){errEl.textContent='Invalid username or password.';return;}
+  if(role!=='customer'&&res.data.role!==role&&!(role==='admin'&&res.data.role==='admin')){
+    errEl.textContent='Access denied for this role.';return;
+  }
+  currentUser=res.data;
+  await loadAll();
+  render();
+}
+
+function logout(){currentUser=null;adminTab='dashboard';selectedSite=null;render();}
+
+/* ══ RENDER ROUTER ══ */
+function render(){
+  destroyCharts();
+  closeModal();
+  if(!currentUser)return renderLogin();
+  if(currentUser.role==='admin')return renderAdmin();
+  if(currentUser.role==='staff')return renderStaffPortal();
+  return renderCustomerPortal();
+}
+
+/* ══ LOGIN ══ */
+let loginRole='admin';
+function renderLogin(){
+  document.getElementById('app').innerHTML=`
+  <div class="login-wrap">
+    <div class="login-card">
+      <div class="login-logo"><div class="logo-icon">ST</div>ServiceTrack</div>
+      <div class="login-sub">Field service management platform</div>
+      <div class="role-tabs">
+        <div class="role-tab ${loginRole==='admin'?'active':''}" onclick="setLoginRole('admin')">Admin</div>
+        <div class="role-tab ${loginRole==='staff'?'active':''}" onclick="setLoginRole('staff')">Staff</div>
+        <div class="role-tab ${loginRole==='customer'?'active':''}" onclick="setLoginRole('customer')">Customer</div>
+      </div>
+      <div class="form-field" style="margin-bottom:12px">
+        <label>Username</label>
+        <input id="lu" type="text" placeholder="Enter username" autocomplete="username" onkeydown="if(event.key==='Enter')doLogin('${loginRole}')">
+      </div>
+      <div class="form-field" style="margin-bottom:4px">
+        <label>Password</label>
+        <input id="lp" type="password" placeholder="••••••••" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin('${loginRole}')">
+      </div>
+      <div id="lerr" class="err" style="min-height:20px;margin-top:6px"></div>
+      <button id="loginBtn" class="primary" style="width:100%;margin-top:14px;padding:10px;font-size:14px;border-radius:10px" onclick="doLogin('${loginRole}')">Sign in</button>
+    </div>
+  </div>`;
+  document.getElementById('lu').focus();
+}
+function setLoginRole(r){loginRole=r;renderLogin();}
+
+/* ══ MODAL ══ */
+function openModal(html){document.getElementById('modalContainer').innerHTML=`<div class="modal-bg" onclick="bgClose(event)">${html}</div>`;}
+function closeModal(){document.getElementById('modalContainer').innerHTML='';}
+function bgClose(e){if(e.target.classList.contains('modal-bg'))closeModal();}
+
+/* ══ ADMIN SHELL ══ */
+const TABS=[
+  {id:'dashboard',label:'Dashboard',icon:`<svg class="nav-icon" viewBox="0 0 20 20" fill="currentColor"><path d="M3 4a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H4a1 1 0 01-1-1V4zm0 8a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H4a1 1 0 01-1-1v-4zm8-8a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1V4zm0 8a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1v-4z"/></svg>`},
+  {id:'jobs',label:'Jobs',icon:`<svg class="nav-icon" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M6 2a2 2 0 00-2 2v12a2 2 0 002 2h8a2 2 0 002-2V7.414A2 2 0 0015.414 6L12 2.586A2 2 0 0010.586 2H6zm2 10a1 1 0 10-2 0v2a1 1 0 102 0v-2zm2-3a1 1 0 011 1v4a1 1 0 11-2 0v-4a1 1 0 011-1zm4-1a1 1 0 10-2 0v5a1 1 0 102 0V8z" clip-rule="evenodd"/></svg>`},
+  {id:'staff',label:'Staff',icon:`<svg class="nav-icon" viewBox="0 0 20 20" fill="currentColor"><path d="M9 6a3 3 0 11-6 0 3 3 0 016 0zM17 6a3 3 0 11-6 0 3 3 0 016 0zM12.93 17c.046-.327.07-.66.07-1a6.97 6.97 0 00-1.5-4.33A5 5 0 0119 16v1h-6.07zM6 11a5 5 0 015 5v1H1v-1a5 5 0 015-5z"/></svg>`},
+  {id:'customers',label:'Customers',icon:`<svg class="nav-icon" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd"/></svg>`},
+  {id:'reports',label:'Reports',icon:`<svg class="nav-icon" viewBox="0 0 20 20" fill="currentColor"><path d="M2 11a1 1 0 011-1h2a1 1 0 011 1v5a1 1 0 01-1 1H3a1 1 0 01-1-1v-5zm6-4a1 1 0 011-1h2a1 1 0 011 1v9a1 1 0 01-1 1H9a1 1 0 01-1-1V7zm6-3a1 1 0 011-1h2a1 1 0 011 1v12a1 1 0 01-1 1h-2a1 1 0 01-1-1V4z"/></svg>`},
+  {id:'settings',label:'Settings',icon:`<svg class="nav-icon" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z" clip-rule="evenodd"/></svg>`},
+];
+const pageTitles={dashboard:'Dashboard',jobs:'Job Management',staff:'Staff Management',customers:'Customer Management',reports:'Reports & Analytics',settings:'Settings'};
+
+function renderAdmin(){
+  const contentFns={dashboard:adminDashboard,jobs:adminJobs,staff:adminStaff,customers:adminCustomers,reports:adminReports,settings:adminSettings};
+  const content=contentFns[adminTab]();
+  document.getElementById('app').innerHTML=`
+  <div class="app-layout">
+    <aside class="sidebar">
+      <div class="sidebar-logo"><div class="logo-icon">ST</div>ServiceTrack</div>
+      <div class="sidebar-section">Main menu</div>
+      ${TABS.map(t=>`<button class="nav-item ${adminTab===t.id?'active':''}" onclick="setTab('${t.id}')">${t.icon}${t.label}</button>`).join('')}
+      <div class="sidebar-footer">
+        <div class="user-pill">
+          <div class="avatar">AD</div>
+          <div><div class="user-name">Admin</div><div class="user-role">Administrator</div></div>
+        </div>
+        <button style="width:100%;margin-top:8px;font-size:12px" onclick="logout()">Sign out</button>
+      </div>
+    </aside>
+    <div class="main">
+      <div class="topbar">
+        <div class="page-title">${pageTitles[adminTab]}</div>
+        <div style="display:flex;align-items:center;gap:14px">
+          <div style="font-size:12px;color:var(--text3);display:flex;align-items:center">
+            <span class="sync-dot ${syncStatus==='offline'?'offline':syncStatus==='loading'?'loading':''}" id="syncDot"></span>
+            ${syncStatus==='online'?'Live sync':'Connecting…'}
+          </div>
+          <div style="font-size:12px;color:var(--text3)">${new Date().toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'})}</div>
+        </div>
+      </div>
+      <div class="page">${content}</div>
+    </div>
+  </div>`;
+  initCharts();
+}
+
+/* ══ DASHBOARD ══ */
+function adminDashboard(){
+  const j=DB.jobs;
+  const total=j.length,pending=j.filter(x=>x.status==='Pending').length,
+    processing=j.filter(x=>x.status==='Processing').length,
+    waiting=j.filter(x=>x.status==='Waiting for Material').length,
+    complete=j.filter(x=>x.status==='Complete').length,
+    staffCount=DB.staff.filter(s=>s.role==='staff').length;
+
+  if(selectedSite){
+    const sj=DB.jobs.filter(x=>x.site===selectedSite);
+    return`
+    <div class="breadcrumb"><span onclick="selectedSite=null;render()">← Dashboard</span> / ${siteShort(selectedSite)}</div>
+    <div class="grid3" style="margin-bottom:16px">
+      <div class="metric-card"><div class="m-label">Total</div><div class="m-value">${sj.length}</div></div>
+      <div class="metric-card"><div class="m-label">Active</div><div class="m-value" style="color:var(--amber)">${sj.filter(x=>x.status!=='Complete').length}</div></div>
+      <div class="metric-card"><div class="m-label">Completed</div><div class="m-value" style="color:var(--green)">${sj.filter(x=>x.status==='Complete').length}</div></div>
+    </div>
+    <div class="card">
+      <div class="card-header"><div><div class="card-title">${selectedSite}</div><div class="card-subtitle">${sj.length} jobs</div></div></div>
+      ${sj.length===0?`<div class="empty">No jobs for this site.</div>`:`
+      <table><thead><tr><th style="width:26%">Title</th><th style="width:14%">Staff</th><th style="width:13%">Service</th><th style="width:17%">Status</th><th style="width:10%">Days</th><th style="width:10%">Time</th><th style="width:10%"></th></tr></thead>
+      <tbody>${sj.map(job=>{
+        const s=DB.staff.find(x=>x.id===job.staff_id);
+        const tt=timeTaken(job);
+        return`<tr><td class="pc">${job.title}</td><td>${s?s.name.split(' ')[0]:'-'}</td><td>${job.service}</td><td>${badgeHtml(job.status)}</td><td>${dtagHtml(daysPending(job))}</td><td>${tt?`<span class="time-badge">${tt}</span>`:'—'}</td><td><button class="small" onclick="openJobDetail('${job.id}')">View</button></td></tr>`;
+      }).join('')}</tbody></table>`}
+    </div>`;
+  }
+
+  const siteCards=DB.sites.map(site=>{
+    const sj=j.filter(x=>x.site===site.name);
+    const sp=sj.filter(x=>x.status==='Pending').length;
+    const sc=sj.filter(x=>x.status==='Complete').length;
+    const sw=sj.filter(x=>x.status==='Waiting for Material').length;
+    const spr=sj.filter(x=>x.status==='Processing').length;
+    const cpct=pct(sc,sj.length||1);
+    return`<div class="site-card" onclick="selectedSite='${site.name.replace(/'/g,"\\'")}';render()">
+      <div class="site-name-h">${site.name}</div>
+      <div class="site-mini-bar"><div class="site-mini-fill" style="width:${cpct}%"></div></div>
+      <div style="font-size:11px;color:var(--text3);margin-bottom:6px">${cpct}% complete · ${sj.length} jobs</div>
+      <div class="site-stats">
+        <span class="site-stat" style="background:var(--amber-light);color:#b45309">${sp} pending</span>
+        <span class="site-stat" style="background:var(--blue-light);color:#1d4ed8">${spr} processing</span>
+        <span class="site-stat" style="background:var(--pink-light);color:#be185d">${sw} waiting</span>
+        <span class="site-stat" style="background:var(--green-light);color:#15803d">${sc} done</span>
+      </div>
+    </div>`;
+  }).join('');
+
+  return`
+  <div class="metrics-row">
+    <div class="metric-card"><div class="m-icon" style="background:#eff6ff">📋</div><div class="m-label">Total jobs</div><div class="m-value">${total}</div><div class="m-sub">${complete} completed</div></div>
+    <div class="metric-card"><div class="m-icon" style="background:var(--amber-light)">⏳</div><div class="m-label">Pending</div><div class="m-value" style="color:var(--amber)">${pending}</div></div>
+    <div class="metric-card"><div class="m-icon" style="background:var(--blue-light)">⚙️</div><div class="m-label">Processing</div><div class="m-value" style="color:var(--blue)">${processing}</div></div>
+    <div class="metric-card"><div class="m-icon" style="background:var(--pink-light)">📦</div><div class="m-label">Waiting material</div><div class="m-value" style="color:var(--pink)">${waiting}</div></div>
+    <div class="metric-card"><div class="m-icon" style="background:#f0fdf4">👥</div><div class="m-label">Staff</div><div class="m-value" style="color:var(--green)">${staffCount}</div><div class="m-sub">${pct(complete,total)}% done rate</div></div>
+  </div>
+  <div class="card">
+    <div class="card-header"><div><div class="card-title">Sites overview</div><div class="card-subtitle">Click a site to view its jobs</div></div></div>
+    <div class="grid2" style="gap:12px">${siteCards}</div>
+  </div>
+  <div class="grid2">
+    <div class="card"><div class="card-header"><div class="card-title">Status breakdown</div></div><div class="chart-wrap"><canvas id="statusChart"></canvas></div></div>
+    <div class="card">
+      <div class="card-header"><div><div class="card-title">Recent jobs</div></div></div>
+      <table><thead><tr><th style="width:38%">Title</th><th style="width:22%">Staff</th><th style="width:24%">Status</th><th style="width:16%">Days</th></tr></thead>
+      <tbody>${[...j].slice(0,5).map(job=>{const s=DB.staff.find(x=>x.id===job.staff_id);return`<tr><td class="pc" style="cursor:pointer" onclick="openJobDetail('${job.id}')">${job.title}</td><td>${s?s.name.split(' ')[0]:'-'}</td><td>${badgeHtml(job.status)}</td><td>${dtagHtml(daysPending(job))}</td></tr>`;}).join('')}</tbody></table>
+    </div>
+  </div>`;
+}
+
+/* ══ JOBS ══ */
+function adminJobs(){
+  const sOpts=DB.staff.filter(s=>s.role==='staff').map(s=>`<option value="${s.id}">${s.name}</option>`).join('');
+  const cOpts=DB.customers.map(c=>`<option value="${c.id}">${c.name}</option>`).join('');
+  const vOpts=DB.services.map(s=>`<option>${s.name}</option>`).join('');
+  const stOpts=DB.sites.map(s=>`<option>${s.name}</option>`).join('');
+  return`
+  <div class="card">
+    <div class="card-header"><div class="card-title">Create new job</div></div>
+    <div class="form-grid-2">
+      <div class="form-field"><label>Job title</label><input id="jt" placeholder="e.g. Panel inspection"></div>
+      <div class="form-field"><label>Assign to staff</label><select id="js"><option value="">Select staff</option>${sOpts}</select></div>
+    </div>
+    <div class="form-grid-3">
+      <div class="form-field"><label>Service type</label><select id="jv"><option value="">Select service</option>${vOpts}</select></div>
+      <div class="form-field"><label>Site</label><select id="jsite"><option value="">Select site</option>${stOpts}</select></div>
+      <div class="form-field"><label>Customer (optional)</label><select id="jcust"><option value="">Select customer</option>${cOpts}</select></div>
+    </div>
+    <div class="form-grid-1"><div class="form-field"><label>Notes</label><textarea id="jn" placeholder="Additional notes…" style="min-height:56px"></textarea></div></div>
+    <div class="form-actions"><button class="primary" id="addJobBtn" onclick="addJob()">+ Create job</button><div id="jerr" class="err"></div></div>
+  </div>
+  <div class="card mt">
+    <div class="card-header"><div><div class="card-title">All jobs</div><div class="card-subtitle">${DB.jobs.length} total</div></div></div>
+    <div class="tscroll"><table style="min-width:780px">
+      <thead><tr><th style="width:18%">Title</th><th style="width:11%">Staff</th><th style="width:10%">Customer</th><th style="width:10%">Service</th><th style="width:11%">Site</th><th style="width:15%">Status</th><th style="width:8%">Days</th><th style="width:9%">Time taken</th><th style="width:8%"></th></tr></thead>
+      <tbody>${DB.jobs.map(job=>{
+        const s=DB.staff.find(x=>x.id===job.staff_id);
+        const cust=DB.customers.find(x=>x.id===job.customer_id);
+        const tt=timeTaken(job);
+        const sOpts2=['Processing','Pending','Waiting for Material','Complete'].map(o=>`<option ${job.status===o?'selected':''}>${o}</option>`).join('');
+        return`<tr>
+          <td class="pc" style="cursor:pointer" onclick="openJobDetail('${job.id}')" title="${job.title}">${job.title}</td>
+          <td>${s?s.name.split(' ')[0]:'-'}</td>
+          <td>${cust?cust.name.split(' ')[0]:'-'}</td>
+          <td>${job.service}</td>
+          <td title="${job.site}">${siteShort(job.site)}</td>
+          <td><select class="sel-inline" onchange="changeJobStatus('${job.id}',this.value)">${sOpts2}</select></td>
+          <td>${dtagHtml(daysPending(job))}</td>
+          <td>${tt?`<span class="time-badge">${tt}</span>`:'—'}</td>
+          <td style="display:flex;gap:4px">
+            <button class="small" onclick="openJobDetail('${job.id}')">Edit</button>
+            <button class="danger small" onclick="deleteJob('${job.id}')">✕</button>
+          </td>
+        </tr>`;
+      }).join('')}
+      </tbody></table></div>
+  </div>`;
+}
+
+/* ══ JOB DETAIL / EDIT MODAL ══ */
+async function openJobDetail(jobId){
+  const job=DB.jobs.find(x=>x.id===jobId);
+  if(!job)return;
+  const products=job.products||[];
+  const sOpts=DB.staff.filter(s=>s.role==='staff').map(s=>`<option value="${s.id}" ${job.staff_id===s.id?'selected':''}>${s.name}</option>`).join('');
+  const cOpts=DB.customers.map(c=>`<option value="${c.id}" ${job.customer_id===c.id?'selected':''}>${c.name}</option>`).join('');
+  const vOpts=DB.services.map(s=>`<option ${job.service===s.name?'selected':''}>${s.name}</option>`).join('');
+  const stOpts=DB.sites.map(s=>`<option ${job.site===s.name?'selected':''}>${s.name}</option>`).join('');
+  const statOpts=['Pending','Processing','Waiting for Material','Complete'].map(o=>`<option ${job.status===o?'selected':''}>${o}</option>`).join('');
+
+  // Load signed URLs for photos
+  let beforeUrl='',afterUrl='';
+  if(job.photo_before){
+    const{data}=await sb.storage.from('job-photos').createSignedUrl(job.photo_before,3600);
+    if(data)beforeUrl=data.signedUrl;
+  }
+  if(job.photo_after){
+    const{data}=await sb.storage.from('job-photos').createSignedUrl(job.photo_after,3600);
+    if(data)afterUrl=data.signedUrl;
+  }
+
+  const productsRows=products.map((p,i)=>`
+    <tr>
+      <td><input type="text" value="${p.name||''}" placeholder="Product name" onchange="updateProduct('${jobId}',${i},'name',this.value)" style="width:100%"></td>
+      <td><input type="number" value="${p.qty||''}" placeholder="Qty" min="1" onchange="updateProduct('${jobId}',${i},'qty',this.value)" style="width:80px"></td>
+      <td><button class="danger small" onclick="removeProduct('${jobId}',${i})">✕</button></td>
+    </tr>`).join('');
+
+  openModal(`
+  <div class="modal modal-lg" onclick="event.stopPropagation()">
+    <div class="modal-title">
+      <span>Job Details — Edit</span>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div class="form-grid-2">
+      <div class="form-field"><label>Job title</label><input id="ej_title" value="${job.title||''}"></div>
+      <div class="form-field"><label>Status</label><select id="ej_status">${statOpts}</select></div>
+    </div>
+    <div class="form-grid-2">
+      <div class="form-field"><label>Assign to staff</label><select id="ej_staff"><option value="">Select</option>${sOpts}</select></div>
+      <div class="form-field"><label>Customer</label><select id="ej_cust"><option value="">None</option>${cOpts}</select></div>
+    </div>
+    <div class="form-grid-2">
+      <div class="form-field"><label>Service</label><select id="ej_svc">${vOpts}</select></div>
+      <div class="form-field"><label>Site</label><select id="ej_site">${stOpts}</select></div>
+    </div>
+    <div class="form-grid-1"><div class="form-field"><label>Notes</label><textarea id="ej_notes">${job.notes||''}</textarea></div></div>
+
+    <hr>
+    <div class="detail-label" style="margin-bottom:8px">Products / Materials used</div>
+    <table class="products-table">
+      <thead><tr><th>Product name</th><th>Qty</th><th></th></tr></thead>
+      <tbody id="productsBody">${productsRows}</tbody>
+    </table>
+    <button class="small" style="margin-top:8px" onclick="addProductRow('${jobId}')">+ Add product</button>
+
+    <hr>
+    <div class="detail-label" style="margin-bottom:8px">Photos</div>
+    <div class="grid2">
+      <div>
+        <div class="photo-label">Before task</div>
+        <div class="photo-upload-area" id="beforeArea">
+          <input type="file" accept="image/*" onchange="uploadPhoto('${jobId}','before',this)">
+          ${beforeUrl?`<img class="photo-preview" src="${beforeUrl}" alt="Before">`:
+            `<div style="font-size:12px;color:var(--text3)">📷 Click to upload before photo</div>`}
+        </div>
+      </div>
+      <div>
+        <div class="photo-label">After task</div>
+        <div class="photo-upload-area" id="afterArea">
+          <input type="file" accept="image/*" onchange="uploadPhoto('${jobId}','after',this)">
+          ${afterUrl?`<img class="photo-preview" src="${afterUrl}" alt="After">`:
+            `<div style="font-size:12px;color:var(--text3)">📷 Click to upload after photo</div>`}
+        </div>
+      </div>
+    </div>
+
+    <hr>
+    <div class="form-actions">
+      <button class="primary" onclick="saveJobEdit('${jobId}')">Save changes</button>
+      <div id="editErr" class="err"></div>
+    </div>
+  </div>`);
+
+  // Store temp products in memory for editing
+  window._editProducts={};
+  window._editProducts[jobId]=[...products.map(p=>({...p}))];
+}
+
+function updateProduct(jobId,idx,field,val){
+  if(!window._editProducts[jobId])return;
+  if(!window._editProducts[jobId][idx])window._editProducts[jobId][idx]={};
+  window._editProducts[jobId][idx][field]=val;
+}
+function addProductRow(jobId){
+  if(!window._editProducts[jobId])window._editProducts[jobId]=[];
+  const newIdx=window._editProducts[jobId].length;
+  window._editProducts[jobId].push({name:'',qty:''});
+  const tbody=document.getElementById('productsBody');
+  if(tbody){
+    const tr=document.createElement('tr');
+    tr.innerHTML=`
+      <td><input type="text" placeholder="Product name" onchange="updateProduct('${jobId}',${newIdx},'name',this.value)" style="width:100%"></td>
+      <td><input type="number" placeholder="Qty" min="1" onchange="updateProduct('${jobId}',${newIdx},'qty',this.value)" style="width:80px"></td>
+      <td><button class="danger small" onclick="removeProduct('${jobId}',${newIdx})">✕</button></td>`;
+    tbody.appendChild(tr);
+  }
+}
+function removeProduct(jobId,idx){
+  if(!window._editProducts[jobId])return;
+  window._editProducts[jobId].splice(idx,1);
+  openJobDetail(jobId);
+}
+
+async function uploadPhoto(jobId,type,input){
+  const file=input.files[0];
+  if(!file)return;
+  const ext=file.name.split('.').pop();
+  const path=`${jobId}/${type}_${Date.now()}.${ext}`;
+  const{error}=await sb.storage.from('job-photos').upload(path,file,{upsert:true});
+  if(error){showToast('Upload error: '+error.message,'error');return;}
+  const field=type==='before'?'photo_before':'photo_after';
+  await sb.from('jobs').update({[field]:path}).eq('id',jobId);
+  showToast('Photo uploaded','success');
+  await loadAll();
+  openJobDetail(jobId);
+}
+
+async function saveJobEdit(jobId){
+  const title=document.getElementById('ej_title').value.trim();
+  const status=document.getElementById('ej_status').value;
+  const staff_id=document.getElementById('ej_staff').value||null;
+  const customer_id=document.getElementById('ej_cust').value||null;
+  const service=document.getElementById('ej_svc').value;
+  const site=document.getElementById('ej_site').value;
+  const notes=document.getElementById('ej_notes').value.trim();
+  const products=(window._editProducts[jobId]||[]).filter(p=>p.name&&p.name.trim());
+  if(!title){document.getElementById('editErr').textContent='Title required.';return;}
+
+  const oldJob=DB.jobs.find(x=>x.id===jobId);
+  const wasComplete=oldJob&&oldJob.status==='Complete';
+  const nowComplete=status==='Complete';
+  const completed_at=(nowComplete&&!wasComplete)?new Date().toISOString():(wasComplete?oldJob.completed_at:null);
+
+  const{error}=await sb.from('jobs').update({title,status,staff_id,customer_id,service,site,notes,products,completed_at}).eq('id',jobId);
+  if(error){document.getElementById('editErr').textContent='Error: '+error.message;return;}
+  showToast('Job saved','success');
+  await loadAll();
+  closeModal();
+  render();
+}
+
+/* ══ STAFF PAGE ══ */
+function adminStaff(){
+  const staffOnly=DB.staff.filter(s=>s.role==='staff');
+  return`
+  <div class="card">
+    <div class="card-header"><div class="card-title">Add staff member</div></div>
+    <div class="form-grid-2">
+      <div class="form-field"><label>Full name</label><input id="sn" placeholder="Full name"></div>
+      <div class="form-field"><label>Username</label><input id="su" placeholder="Login username"></div>
+    </div>
+    <div class="form-grid-1"><div class="form-field"><label>Password</label><input id="sp" type="password" placeholder="Set a password"></div></div>
+    <div class="form-actions"><button class="primary" id="addStaffBtn" onclick="addStaff()">+ Add member</button><div id="serr" class="err"></div></div>
+  </div>
+  <div class="card mt">
+    <div class="card-header"><div><div class="card-title">Team members</div><div class="card-subtitle">${staffOnly.length} staff</div></div></div>
+    ${staffOnly.map(s=>{
+      const total=DB.jobs.filter(j=>j.staff_id===s.id).length;
+      const active=DB.jobs.filter(j=>j.staff_id===s.id&&j.status!=='Complete').length;
+      const done=DB.jobs.filter(j=>j.staff_id===s.id&&j.status==='Complete').length;
+      return`<div class="settings-item" id="si_${s.id}">
+        <div class="avatar" style="flex-shrink:0">${initials(s.name)}</div>
+        <div class="settings-item-name" style="flex:1;padding-left:10px">
+          <div style="font-weight:600;font-size:13px">${s.name}</div>
+          <div style="font-size:11px;color:var(--text3)">${s.username} · ${total} jobs · ${active} active · ${done} done</div>
+        </div>
+        <input class="settings-item-edit" id="sedit_${s.id}" value="${s.name}" style="max-width:200px">
+        <div style="display:flex;gap:6px">
+          <button class="small" onclick="toggleEditStaff('${s.id}')">Edit</button>
+          <button class="small success" id="saveSBtn_${s.id}" style="display:none" onclick="saveStaffName('${s.id}')">Save</button>
+          <button class="danger small" onclick="deleteStaff('${s.id}')">Remove</button>
+        </div>
+      </div>`;
+    }).join('')}
+  </div>`;
+}
+
+function toggleEditStaff(id){
+  const row=document.getElementById('si_'+id);
+  const saveBtn=document.getElementById('saveSBtn_'+id);
+  const isEditing=row.classList.toggle('editing');
+  saveBtn.style.display=isEditing?'':'none';
+}
+async function saveStaffName(id){
+  const val=document.getElementById('sedit_'+id).value.trim();
+  if(!val)return;
+  await sb.from('staff').update({name:val}).eq('id',id);
+  await loadAll();render();showToast('Name updated','success');
+}
+
+/* ══ CUSTOMERS PAGE ══ */
+function adminCustomers(){
+  return`
+  <div class="card">
+    <div class="card-header"><div class="card-title">Add customer</div></div>
+    <div class="form-grid-2">
+      <div class="form-field"><label>Full name / Company</label><input id="cn" placeholder="Customer name"></div>
+      <div class="form-field"><label>Username</label><input id="cu" placeholder="Login username"></div>
+    </div>
+    <div class="form-grid-2">
+      <div class="form-field"><label>Password</label><input id="cp2" type="password" placeholder="Set a password"></div>
+      <div class="form-field"><label>Site (optional)</label><select id="csite"><option value="">Select site</option>${DB.sites.map(s=>`<option>${s.name}</option>`).join('')}</select></div>
+    </div>
+    <div class="form-actions"><button class="primary" id="addCustBtn" onclick="addCustomer()">+ Add customer</button><div id="cerr" class="err"></div></div>
+  </div>
+  <div class="card mt">
+    <div class="card-header"><div><div class="card-title">Customers</div><div class="card-subtitle">${DB.customers.length} registered</div></div></div>
+    ${DB.customers.length===0?`<div class="empty">No customers yet.</div>`:''}
+    ${DB.customers.map(c=>{
+      const jobs=DB.jobs.filter(j=>j.customer_id===c.id).length;
+      return`<div class="settings-item" id="ci_${c.id}">
+        <div class="avatar purple" style="flex-shrink:0">${initials(c.name)}</div>
+        <div class="settings-item-name" style="flex:1;padding-left:10px">
+          <div style="font-weight:600;font-size:13px">${c.name}</div>
+          <div style="font-size:11px;color:var(--text3)">${c.username} · ${c.site||'No site'} · ${jobs} jobs</div>
+        </div>
+        <input class="settings-item-edit" id="cedit_${c.id}" value="${c.name}" style="max-width:200px">
+        <div style="display:flex;gap:6px">
+          <button class="small" onclick="toggleEditCustomer('${c.id}')">Edit</button>
+          <button class="small success" id="saveCBtn_${c.id}" style="display:none" onclick="saveCustomerName('${c.id}')">Save</button>
+          <button class="danger small" onclick="deleteCustomer('${c.id}')">Remove</button>
+        </div>
+      </div>`;
+    }).join('')}
+  </div>`;
+}
+function toggleEditCustomer(id){
+  const row=document.getElementById('ci_'+id);
+  const saveBtn=document.getElementById('saveCBtn_'+id);
+  const isEditing=row.classList.toggle('editing');
+  saveBtn.style.display=isEditing?'':'none';
+}
+async function saveCustomerName(id){
+  const val=document.getElementById('cedit_'+id).value.trim();
+  if(!val)return;
+  await sb.from('customers').update({name:val}).eq('id',id);
+  await loadAll();render();showToast('Customer updated','success');
+}
+
+/* ══ REPORTS ══ */
+let rFilters={staff:'',customer:'',site:'',status:''};
+function adminReports(){
+  let jobs=DB.jobs;
+  if(rFilters.staff)jobs=jobs.filter(j=>j.staff_id===rFilters.staff);
+  if(rFilters.customer)jobs=jobs.filter(j=>j.customer_id===rFilters.customer);
+  if(rFilters.site)jobs=jobs.filter(j=>j.site===rFilters.site);
+  if(rFilters.status)jobs=jobs.filter(j=>j.status===rFilters.status);
+
+  const total=jobs.length,complete=jobs.filter(x=>x.status==='Complete').length;
+  const overdue=jobs.filter(x=>x.status!=='Complete'&&daysPending(x)>5).length;
+  const staffOnly=DB.staff.filter(s=>s.role==='staff');
+
+  const sOpts=staffOnly.map(s=>`<option value="${s.id}" ${rFilters.staff===s.id?'selected':''}>${s.name}</option>`).join('');
+  const cOpts=DB.customers.map(c=>`<option value="${c.id}" ${rFilters.customer===c.id?'selected':''}>${c.name}</option>`).join('');
+  const stOpts=DB.sites.map(s=>`<option value="${s.name}" ${rFilters.site===s.name?'selected':''}>${s.name}</option>`).join('');
+  const statOpts=['Pending','Processing','Waiting for Material','Complete'].map(o=>`<option value="${o}" ${rFilters.status===o?'selected':''}>${o}</option>`).join('');
+
+  return`
+  <div class="card no-print">
+    <div class="card-header">
+      <div class="card-title">Filters</div>
+      <div style="display:flex;gap:8px">
+        <button class="small" onclick="clearReportFilters()">Clear filters</button>
+        <button class="primary small" onclick="printReport()">🖨️ Print / PDF</button>
+      </div>
+    </div>
+    <div class="filter-bar">
+      <div class="form-field"><label>Staff</label><select onchange="rFilters.staff=this.value;render();setTab('reports')"><option value="">All staff</option>${sOpts}</select></div>
+      <div class="form-field"><label>Customer</label><select onchange="rFilters.customer=this.value;render();setTab('reports')"><option value="">All customers</option>${cOpts}</select></div>
+      <div class="form-field"><label>Site</label><select onchange="rFilters.site=this.value;render();setTab('reports')"><option value="">All sites</option>${stOpts}</select></div>
+      <div class="form-field"><label>Status</label><select onchange="rFilters.status=this.value;render();setTab('reports')"><option value="">All statuses</option>${statOpts}</select></div>
+    </div>
+  </div>
+
+  <div class="report-stat-grid">
+    <div class="rstat"><div class="rv">${total}</div><div class="rl">Jobs (filtered)</div></div>
+    <div class="rstat"><div class="rv" style="color:var(--green)">${pct(complete,total)}%</div><div class="rl">Completion rate</div></div>
+    <div class="rstat"><div class="rv" style="color:${overdue>0?'var(--red)':'var(--green)'}">${overdue}</div><div class="rl">Overdue (&gt;5d)</div></div>
+  </div>
+
+  <div class="grid2">
+    <div class="card"><div class="card-header"><div class="card-title">Jobs by status</div></div><div class="chart-wrap"><canvas id="rStatusChart"></canvas></div></div>
+    <div class="card"><div class="card-header"><div class="card-title">Jobs by site</div></div><div class="chart-wrap"><canvas id="rSiteChart"></canvas></div></div>
+  </div>
+
+  <div class="card mt">
+    <div class="card-header"><div class="card-title">Staff performance</div></div>
+    <div class="chart-wrap" style="height:180px"><canvas id="staffChart"></canvas></div>
+    <hr>
+    <table><thead><tr><th style="width:22%">Staff</th><th style="width:9%">Total</th><th style="width:12%">Pending</th><th style="width:13%">Processing</th><th style="width:13%">Waiting</th><th style="width:11%">Complete</th><th style="width:20%">Done %</th></tr></thead>
+    <tbody>${staffOnly.map(s=>{
+      const sj=jobs.filter(x=>x.staff_id===s.id);
+      const sp=sj.filter(x=>x.status==='Pending').length;
+      const spr=sj.filter(x=>x.status==='Processing').length;
+      const sw=sj.filter(x=>x.status==='Waiting for Material').length;
+      const sc=sj.filter(x=>x.status==='Complete').length;
+      const rate=pct(sc,sj.length||1);
+      return`<tr><td class="pc"><div style="display:flex;align-items:center;gap:8px"><div class="avatar" style="width:24px;height:24px;font-size:9px">${initials(s.name)}</div>${s.name}</div></td><td>${sj.length}</td><td>${badgeHtml('Pending').replace('Pending',''+sp)}</td><td>${badgeHtml('Processing').replace('Processing',''+spr)}</td><td>${badgeHtml('Waiting for Material').replace('Waiting for Material',''+sw)}</td><td>${badgeHtml('Complete').replace('Complete',''+sc)}</td><td><div style="display:flex;align-items:center;gap:6px"><div class="progress-bar" style="flex:1"><div class="progress-fill ${rate>70?'green':''}" style="width:${rate}%"></div></div><span style="font-size:11px;font-weight:600;min-width:28px">${rate}%</span></div></td></tr>`;
+    }).join('')}</tbody></table>
+  </div>
+
+  <div class="card mt">
+    <div class="card-header"><div class="card-title">All filtered jobs</div><div class="card-subtitle">${jobs.length} jobs</div></div>
+    <div class="tscroll"><table style="min-width:720px">
+      <thead><tr><th style="width:20%">Title</th><th style="width:12%">Staff</th><th style="width:12%">Customer</th><th style="width:10%">Service</th><th style="width:12%">Site</th><th style="width:14%">Status</th><th style="width:10%">Days</th><th style="width:10%">Time taken</th></tr></thead>
+      <tbody>${jobs.map(job=>{
+        const s=DB.staff.find(x=>x.id===job.staff_id);
+        const cust=DB.customers.find(x=>x.id===job.customer_id);
+        const tt=timeTaken(job);
+        return`<tr><td class="pc" title="${job.title}">${job.title}</td><td>${s?s.name.split(' ')[0]:'-'}</td><td>${cust?cust.name.split(' ')[0]:'-'}</td><td>${job.service}</td><td title="${job.site}">${siteShort(job.site)}</td><td>${badgeHtml(job.status)}</td><td>${dtagHtml(daysPending(job))}</td><td>${tt?`<span class="time-badge">${tt}</span>`:'—'}</td></tr>`;
+      }).join('')}</tbody></table></div>
+  </div>
+  <div class="card mt"><div class="card-header"><div class="card-title">Service type breakdown</div></div><div class="chart-wrap-sm"><canvas id="serviceChart"></canvas></div></div>`;
+}
+function clearReportFilters(){rFilters={staff:'',customer:'',site:'',status:''};setTab('reports');}
+function printReport(){window.print();}
+
+/* ══ SETTINGS ══ */
+function adminSettings(){
+  const svcList=DB.services.map((s,i)=>`
+    <div class="settings-item" id="svcRow_${s.id}">
+      <div class="settings-item-name">${s.name}</div>
+      <input class="settings-item-edit" id="svcEdit_${s.id}" value="${s.name}" style="max-width:180px">
+      <div style="display:flex;gap:6px">
+        <button class="small" onclick="toggleEditItem('svc','${s.id}')">Edit</button>
+        <button class="small success" id="saveSvcBtn_${s.id}" style="display:none" onclick="saveServiceName('${s.id}')">Save</button>
+        <button class="danger small" onclick="removeService('${s.name}')">✕</button>
+      </div>
+    </div>`).join('');
+
+  const siteList=DB.sites.map((s,i)=>`
+    <div class="settings-item" id="siteRow_${s.id}">
+      <div class="settings-item-name">${s.name}</div>
+      <input class="settings-item-edit" id="siteEdit_${s.id}" value="${s.name}" style="max-width:180px">
+      <div style="display:flex;gap:6px">
+        <button class="small" onclick="toggleEditItem('site','${s.id}')">Edit</button>
+        <button class="small success" id="saveSiteBtn_${s.id}" style="display:none" onclick="saveSiteName('${s.id}')">Save</button>
+        <button class="danger small" onclick="removeSite('${s.name}')">✕</button>
+      </div>
+    </div>`).join('');
+
+  return`
+  <div class="grid2">
+    <div class="card">
+      <div class="card-header"><div class="card-title">Services</div></div>
+      ${svcList}
+      <div class="add-row"><input id="newsvc" placeholder="New service name" style="flex:1"><button class="primary small" onclick="addService()">Add</button></div>
+    </div>
+    <div class="card">
+      <div class="card-header"><div class="card-title">Sites</div></div>
+      ${siteList}
+      <div class="add-row"><input id="newsite" placeholder="New site name" style="flex:1"><button class="primary small" onclick="addSite()">Add</button></div>
+    </div>
+  </div>`;
+}
+function toggleEditItem(type,id){
+  const row=document.getElementById(type+'Row_'+id);
+  const saveBtn=document.getElementById('save'+(type==='svc'?'Svc':'Site')+'Btn_'+id);
+  const isEditing=row.classList.toggle('editing');
+  saveBtn.style.display=isEditing?'':'none';
+}
+async function saveServiceName(id){
+  const val=document.getElementById('svcEdit_'+id).value.trim();
+  if(!val)return;
+  await sb.from('services').update({name:val}).eq('id',id);
+  await loadAll();render();showToast('Service updated','success');
+}
+async function saveSiteName(id){
+  const val=document.getElementById('siteEdit_'+id).value.trim();
+  if(!val)return;
+  await sb.from('sites').update({name:val}).eq('id',id);
+  await loadAll();render();showToast('Site updated','success');
+}
+
+/* ══ STAFF PORTAL ══ */
+function renderStaffPortal(){
+  const my=DB.jobs.filter(j=>j.staff_id===currentUser.id);
+  const active=my.filter(j=>j.status!=='Complete');
+  const done=my.filter(j=>j.status==='Complete');
+  document.getElementById('app').innerHTML=`
+  <div class="app-layout">
+    <aside class="sidebar">
+      <div class="sidebar-logo"><div class="logo-icon">ST</div>ServiceTrack</div>
+      <div style="padding:14px 16px 0">
+        <div style="font-size:10px;color:var(--text3);font-weight:600;text-transform:uppercase;letter-spacing:0.07em;margin-bottom:10px">My jobs</div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap">
+          <span class="site-stat" style="background:var(--amber-light);color:#b45309;padding:3px 10px;border-radius:10px;font-size:11px;font-weight:600">${active.length} active</span>
+          <span class="site-stat" style="background:var(--green-light);color:#15803d;padding:3px 10px;border-radius:10px;font-size:11px;font-weight:600">${done.length} done</span>
+        </div>
+      </div>
+      <div class="sidebar-footer">
+        <div class="user-pill">
+          <div class="avatar green">${initials(currentUser.name)}</div>
+          <div><div class="user-name">${currentUser.name}</div><div class="user-role">Staff</div></div>
+        </div>
+        <button style="width:100%;margin-top:8px;font-size:12px" onclick="logout()">Sign out</button>
+      </div>
+    </aside>
+    <div class="main">
+      <div class="topbar">
+        <div class="page-title">My Jobs</div>
+        <div style="font-size:12px;color:var(--text3);display:flex;align-items:center"><span class="sync-dot" id="syncDot"></span>Live sync</div>
+      </div>
+      <div class="page">
+        <div class="grid2" style="margin-bottom:16px">
+          <div class="metric-card"><div class="m-icon" style="background:var(--amber-light)">⏳</div><div class="m-label">Active</div><div class="m-value" style="color:var(--amber)">${active.length}</div></div>
+          <div class="metric-card"><div class="m-icon" style="background:var(--green-light)">✅</div><div class="m-label">Completed</div><div class="m-value" style="color:var(--green)">${done.length}</div></div>
+        </div>
+        <div class="card">
+          <div class="card-header"><div class="card-title">Active jobs</div><div class="card-subtitle">Tap Edit to update status, add products or photos</div></div>
+          ${active.length===0?`<div class="empty">No active jobs assigned to you.</div>`:`
+          <div class="tscroll"><table style="min-width:480px">
+            <thead><tr><th style="width:28%">Title</th><th style="width:15%">Service</th><th style="width:19%">Site</th><th style="width:20%">Status</th><th style="width:10%">Days</th><th style="width:8%"></th></tr></thead>
+            <tbody>${active.map(job=>{
+              const sOpts=['Waiting for Material','Complete'].map(o=>`<option ${job.status===o?'selected':''}>${o}</option>`).join('');
+              return`<tr><td class="pc">${job.title}</td><td>${job.service}</td><td>${siteShort(job.site)}</td><td><select class="sel-inline" onchange="staffChangeStatus('${job.id}',this.value)">${sOpts}</select></td><td>${dtagHtml(daysPending(job))}</td><td><button class="small" onclick="openJobDetail('${job.id}')">Edit</button></td></tr>`;
+            }).join('')}</tbody>
+          </table></div>`}
+        </div>
+        ${done.length>0?`
+        <div class="card mt">
+          <div class="card-header"><div class="card-title">Completed jobs</div></div>
+          <table><thead><tr><th style="width:30%">Title</th><th style="width:20%">Service</th><th style="width:28%">Site</th><th style="width:12%">Time taken</th><th style="width:10%"></th></tr></thead>
+          <tbody>${done.map(job=>{const tt=timeTaken(job);return`<tr><td class="pc">${job.title}</td><td>${job.service}</td><td>${job.site}</td><td>${tt?`<span class="time-badge">${tt}</span>`:'—'}</td><td><button class="small" onclick="openJobDetail('${job.id}')">View</button></td></tr>`;}).join('')}</tbody></table>
+        </div>`:''}
+      </div>
+    </div>
+  </div>`;
+}
+
+/* ══ CUSTOMER PORTAL ══ */
+function renderCustomerPortal(){
+  const siteJobs=currentUser.site?DB.jobs.filter(j=>j.site===currentUser.site):DB.jobs.filter(j=>j.customer_id===currentUser.id);
+  const active=siteJobs.filter(j=>j.status!=='Complete');
+  const done=siteJobs.filter(j=>j.status==='Complete');
+  const vOpts=DB.services.map(s=>`<option>${s.name}</option>`).join('');
+
+  document.getElementById('app').innerHTML=`
+  <div class="app-layout">
+    <aside class="sidebar">
+      <div class="sidebar-logo"><div class="logo-icon">ST</div>ServiceTrack</div>
+      <div style="padding:14px 16px 0">
+        <div style="font-size:10px;color:var(--text3);font-weight:600;text-transform:uppercase;letter-spacing:0.07em;margin-bottom:8px">My site</div>
+        <div style="font-size:12px;font-weight:600;color:var(--text)">${currentUser.site||'All sites'}</div>
+        <div style="margin-top:10px;display:flex;flex-direction:column;gap:4px">
+          <span class="site-stat" style="background:var(--amber-light);color:#b45309;padding:3px 10px;border-radius:10px;font-size:11px;font-weight:600;display:inline-block;width:fit-content">${active.length} active</span>
+          <span class="site-stat" style="background:var(--green-light);color:#15803d;padding:3px 10px;border-radius:10px;font-size:11px;font-weight:600;display:inline-block;width:fit-content">${done.length} done</span>
+        </div>
+      </div>
+      <div class="sidebar-footer">
+        <div class="user-pill">
+          <div class="avatar purple">${initials(currentUser.name)}</div>
+          <div><div class="user-name">${currentUser.name}</div><div class="user-role">Customer</div></div>
+        </div>
+        <button style="width:100%;margin-top:8px;font-size:12px" onclick="logout()">Sign out</button>
+      </div>
+    </aside>
+    <div class="main">
+      <div class="topbar">
+        <div class="page-title">Service Requests</div>
+        <div style="font-size:12px;color:var(--text3);display:flex;align-items:center"><span class="sync-dot" id="syncDot"></span>Live updates</div>
+      </div>
+      <div class="page">
+        <div class="card" style="margin-bottom:16px">
+          <div class="card-header"><div class="card-title">New repair request</div></div>
+          <div class="form-grid-2">
+            <div class="form-field"><label>Description</label><input id="creq_title" placeholder="Describe the issue"></div>
+            <div class="form-field"><label>Service type</label><select id="creq_svc"><option value="">Select type</option>${vOpts}</select></div>
+          </div>
+          <div class="form-grid-1"><div class="form-field"><label>Additional notes</label><textarea id="creq_notes" placeholder="Any extra details…" style="min-height:54px"></textarea></div></div>
+          <div class="form-actions"><button class="primary" id="submitReqBtn" onclick="submitCustomerRequest()">Submit request</button><div id="reqErr" class="err"></div></div>
+        </div>
+
+        <div class="card">
+          <div class="card-header"><div><div class="card-title">Active requests</div><div class="card-subtitle">Real-time status updates</div></div></div>
+          ${active.length===0?`<div class="empty">No active requests.</div>`:`
+          ${active.map(job=>{
+            const s=DB.staff.find(x=>x.id===job.staff_id);
+            const d=daysPending(job);
+            return`<div class="customer-request-card">
+              <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:8px">
+                <div>
+                  <div style="font-weight:600;font-size:14px;color:var(--text)">${job.title}</div>
+                  <div style="font-size:12px;color:var(--text3);margin-top:2px">${job.service} · ${job.site}</div>
+                </div>
+                <div style="display:flex;gap:8px;align-items:center">
+                  ${badgeHtml(job.status)}
+                  ${d!==null?dtagHtml(d):''}
+                </div>
+              </div>
+              ${s?`<div style="font-size:12px;color:var(--text2)">Assigned to: <strong>${s.name}</strong></div>`:''}
+              ${job.notes?`<div style="font-size:12px;color:var(--text3);margin-top:4px">${job.notes}</div>`:''}
+              <div style="font-size:11px;color:var(--text3);margin-top:6px">Submitted: ${new Date(job.created_at).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'})}</div>
+            </div>`;
+          }).join('')}`}
+        </div>
+
+        ${done.length>0?`
+        <div class="card mt">
+          <div class="card-header"><div class="card-title">Completed requests</div></div>
+          ${done.map(job=>{
+            const tt=timeTaken(job);
+            return`<div class="customer-request-card" style="opacity:0.8">
+              <div style="display:flex;align-items:center;justify-content:space-between">
+                <div>
+                  <div style="font-weight:600;font-size:13px;color:var(--text)">${job.title}</div>
+                  <div style="font-size:12px;color:var(--text3)">${job.service} · ${job.site}</div>
+                </div>
+                <div style="display:flex;gap:8px;align-items:center">
+                  ${badgeHtml(job.status)}
+                  ${tt?`<span class="time-badge">${tt}</span>`:''}
+                </div>
+              </div>
+            </div>`;
+          }).join('')}
+        </div>`:''}
+      </div>
+    </div>
+  </div>`;
+}
+
+async function submitCustomerRequest(){
+  const title=document.getElementById('creq_title').value.trim();
+  const svc=document.getElementById('creq_svc').value;
+  const notes=document.getElementById('creq_notes').value.trim();
+  if(!title||!svc){document.getElementById('reqErr').textContent='Please fill in description and service type.';return;}
+  const btn=document.getElementById('submitReqBtn');
+  btn.disabled=true;btn.textContent='Submitting…';
+  const{error}=await sb.from('jobs').insert({
+    title,service:svc,site:currentUser.site||'',
+    customer_id:currentUser.id,status:'Pending',notes,products:[]
+  });
+  btn.disabled=false;btn.textContent='Submit request';
+  if(error){document.getElementById('reqErr').textContent='Error: '+error.message;return;}
+  showToast('Request submitted!','success');
+  await loadAll();renderCustomerPortal();
+}
+
+/* ══ CHART INIT ══ */
+function initCharts(){
+  setTimeout(()=>{
+    const j=DB.jobs;
+    const statColors={'Pending':'#f59e0b','Processing':'#3b7ff5','Waiting for Material':'#ec4899','Complete':'#22c77a'};
+    const statKeys=Object.keys(statColors);
+    const ctx=document.getElementById('statusChart');
+    if(ctx)charts.status=new Chart(ctx,{type:'doughnut',data:{labels:statKeys,datasets:[{data:statKeys.map(s=>j.filter(x=>x.status===s).length),backgroundColor:Object.values(statColors),borderWidth:0,hoverOffset:4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'right',labels:{font:{size:11},padding:14}}}}});
+
+    if(adminTab==='reports'){
+      let fj=DB.jobs;
+      if(rFilters.staff)fj=fj.filter(x=>x.staff_id===rFilters.staff);
+      if(rFilters.customer)fj=fj.filter(x=>x.customer_id===rFilters.customer);
+      if(rFilters.site)fj=fj.filter(x=>x.site===rFilters.site);
+      if(rFilters.status)fj=fj.filter(x=>x.status===rFilters.status);
+      const ctx1=document.getElementById('rStatusChart');
+      if(ctx1)charts.rStatus=new Chart(ctx1,{type:'doughnut',data:{labels:statKeys,datasets:[{data:statKeys.map(s=>fj.filter(x=>x.status===s).length),backgroundColor:Object.values(statColors),borderWidth:0,hoverOffset:4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'right',labels:{font:{size:11},padding:12}}}}});
+      const ctx2=document.getElementById('rSiteChart');
+      if(ctx2)charts.rSite=new Chart(ctx2,{type:'bar',data:{labels:DB.sites.map(s=>siteShort(s.name)),datasets:[{label:'Jobs',data:DB.sites.map(s=>fj.filter(x=>x.site===s.name).length),backgroundColor:'#3b7ff5',borderRadius:5,borderSkipped:false}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,ticks:{stepSize:1},grid:{color:'rgba(0,0,0,0.04)'}},x:{grid:{display:false}}}}});
+      const staffOnly=DB.staff.filter(s=>s.role==='staff');
+      const ctx3=document.getElementById('staffChart');
+      if(ctx3)charts.staff=new Chart(ctx3,{type:'bar',data:{labels:staffOnly.map(s=>s.name.split(' ')[0]),datasets:[{label:'Active',data:staffOnly.map(s=>fj.filter(x=>x.staff_id===s.id&&x.status!=='Complete').length),backgroundColor:'#3b7ff5',borderRadius:4,borderSkipped:false},{label:'Completed',data:staffOnly.map(s=>fj.filter(x=>x.staff_id===s.id&&x.status==='Complete').length),backgroundColor:'#22c77a',borderRadius:4,borderSkipped:false}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top'}},scales:{x:{grid:{display:false}},y:{beginAtZero:true,ticks:{stepSize:1},grid:{color:'rgba(0,0,0,0.04)'}}}}});
+      const svcNames=DB.services.map(s=>s.name);
+      const ctx4=document.getElementById('serviceChart');
+      if(ctx4)charts.service=new Chart(ctx4,{type:'bar',data:{labels:svcNames,datasets:[{label:'Jobs',data:svcNames.map(s=>fj.filter(x=>x.service===s).length),backgroundColor:['#3b7ff5','#22c77a','#f59e0b','#ec4899','#8b5cf6','#ef4444'],borderRadius:5,borderSkipped:false}]},options:{responsive:true,maintainAspectRatio:false,indexAxis:'y',plugins:{legend:{display:false}},scales:{x:{beginAtZero:true,ticks:{stepSize:1},grid:{color:'rgba(0,0,0,0.04)'}},y:{grid:{display:false}}}}});
+    }
+  },100);
+}
+
+/* ══ DB ACTIONS ══ */
+function setTab(t){selectedSite=null;adminTab=t;render();}
+
+async function addJob(){
+  const t=document.getElementById('jt').value.trim(),s=document.getElementById('js').value,
+    v=document.getElementById('jv').value,site=document.getElementById('jsite').value,
+    cust=document.getElementById('jcust').value||null,
+    n=document.getElementById('jn').value.trim();
+  if(!t||!s||!v||!site){document.getElementById('jerr').textContent='Title, staff, service and site are required.';return;}
+  const btn=document.getElementById('addJobBtn');
+  btn.disabled=true;btn.textContent='Saving…';
+  const{error}=await sb.from('jobs').insert({title:t,service:v,site,staff_id:s,customer_id:cust,status:'Pending',notes:n,products:[]});
+  if(error){document.getElementById('jerr').textContent='Error: '+error.message;btn.disabled=false;btn.textContent='+ Create job';return;}
+  await loadAll();render();showToast('Job created','success');
+}
+
+async function changeJobStatus(id,status){
+  const updates={status};
+  if(status==='Complete'){
+    const job=DB.jobs.find(x=>x.id===id);
+    if(job&&job.status!=='Complete')updates.completed_at=new Date().toISOString();
+  }
+  const{error}=await sb.from('jobs').update(updates).eq('id',id);
+  if(error){showToast('Error updating status','error');return;}
+  const job=DB.jobs.find(x=>x.id===id);
+  if(job){job.status=status;if(updates.completed_at)job.completed_at=updates.completed_at;}
+}
+
+async function deleteJob(id){
+  if(!confirm('Delete this job?'))return;
+  const{error}=await sb.from('jobs').delete().eq('id',id);
+  if(error){showToast('Error deleting','error');return;}
+  await loadAll();render();showToast('Job deleted');
+}
+
+async function addStaff(){
+  const n=document.getElementById('sn').value.trim(),u=document.getElementById('su').value.trim(),p=document.getElementById('sp').value.trim();
+  if(!n||!u||!p){document.getElementById('serr').textContent='All fields required.';return;}
+  if(DB.staff.find(s=>s.username===u)){document.getElementById('serr').textContent='Username already taken.';return;}
+  const btn=document.getElementById('addStaffBtn');
+  btn.disabled=true;btn.textContent='Saving…';
+  const{error}=await sb.from('staff').insert({name:n,username:u,password_hash:p,role:'staff'});
+  if(error){document.getElementById('serr').textContent='Error: '+error.message;btn.disabled=false;btn.textContent='+ Add member';return;}
+  await loadAll();render();showToast('Staff added','success');
+}
+
+async function deleteStaff(id){
+  if(!confirm('Remove this staff member?'))return;
+  await sb.from('staff').delete().eq('id',id);
+  await loadAll();render();showToast('Staff removed');
+}
+
+async function addCustomer(){
+  const n=document.getElementById('cn').value.trim(),u=document.getElementById('cu').value.trim(),
+    p=document.getElementById('cp2').value.trim(),site=document.getElementById('csite').value||null;
+  if(!n||!u||!p){document.getElementById('cerr').textContent='Name, username and password required.';return;}
+  if(DB.customers.find(c=>c.username===u)){document.getElementById('cerr').textContent='Username already taken.';return;}
+  const btn=document.getElementById('addCustBtn');
+  btn.disabled=true;btn.textContent='Saving…';
+  const{error}=await sb.from('customers').insert({name:n,username:u,password_hash:p,site});
+  if(error){document.getElementById('cerr').textContent='Error: '+error.message;btn.disabled=false;btn.textContent='+ Add customer';return;}
+  await loadAll();render();showToast('Customer added','success');
+}
+
+async function deleteCustomer(id){
+  if(!confirm('Remove this customer?'))return;
+  await sb.from('customers').delete().eq('id',id);
+  await loadAll();render();showToast('Customer removed');
+}
+
+async function addService(){
+  const v=document.getElementById('newsvc').value.trim();
+  if(!v||DB.services.find(s=>s.name===v))return;
+  const{error}=await sb.from('services').insert({name:v});
+  if(error){showToast('Error','error');return;}
+  await loadAll();render();
+}
+async function removeService(name){
+  await sb.from('services').delete().eq('name',name);
+  await loadAll();render();
+}
+async function addSite(){
+  const v=document.getElementById('newsite').value.trim();
+  if(!v||DB.sites.find(s=>s.name===v))return;
+  const{error}=await sb.from('sites').insert({name:v});
+  if(error){showToast('Error','error');return;}
+  await loadAll();render();
+}
+async function removeSite(name){
+  await sb.from('sites').delete().eq('name',name);
+  await loadAll();render();
+}
+
+async function staffChangeStatus(id,status){
+  const updates={status};
+  if(status==='Complete'){
+    const job=DB.jobs.find(x=>x.id===id);
+    if(job&&job.status!=='Complete')updates.completed_at=new Date().toISOString();
+  }
+  const{error}=await sb.from('jobs').update(updates).eq('id',id);
+  if(error){showToast('Error','error');return;}
+  await loadAll();renderStaffPortal();showToast('Status updated','success');
+}
+
+/* ══ BOOT ══ */
+async function boot(){
+  const ok=await loadAll();
+  if(ok)setupRealtime();
+  render();
+}
+boot();
+</script>
+</body>
+</html>
